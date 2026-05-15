@@ -3,6 +3,7 @@ import logging
 from dotenv import load_dotenv
 from telegram import Update
 from telegram.ext import ApplicationBuilder, MessageHandler, CommandHandler, filters, ContextTypes
+from flask import Flask, request
 
 from agent import invoke_agent
 
@@ -13,6 +14,10 @@ assert TELEGRAM_BOT_TOKEN, "TELEGRAM_BOT_TOKEN is not set in the .env file"
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+flask_app = Flask(__name__)
+
+ptb_app = ApplicationBuilder().token(TELEGRAM_BOT_TOKEN).build()
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -35,14 +40,18 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(response)
 
 
-def main():
-    app = ApplicationBuilder().token(TELEGRAM_BOT_TOKEN).build()
-    app.add_handler(CommandHandler("start", start))
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+ptb_app.add_handler(CommandHandler("start", start))
+ptb_app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
-    logger.info("Bot is running...")
-    app.run_polling()
+
+@flask_app.route(f"/{TELEGRAM_BOT_TOKEN}", methods=["POST"])
+def webhook():
+    """Receive updates from Telegram and pass them to the bot."""
+    import asyncio
+    update = Update.de_json(request.get_json(force=True), ptb_app.bot)
+    asyncio.run(ptb_app.process_update(update))
+    return "ok"
 
 
 if __name__ == "__main__":
-    main()
+    flask_app.run(host="0.0.0.0", port=5000)

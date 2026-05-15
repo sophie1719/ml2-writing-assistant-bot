@@ -3,3 +3,4 @@ langgraph
 pyspellchecker
 python-telegram-bot
 python-dotenv
+flask
