@@ -1,6 +1,6 @@
 langchain-mistralai
 langgraph
 pyspellchecker
-python-telegram-bot
+requests
 python-dotenv
 flask

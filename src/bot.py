@@ -1,9 +1,8 @@
 import os
 import logging
+import requests
 from dotenv import load_dotenv
-from telegram import Update
-from telegram.ext import ApplicationBuilder, MessageHandler, CommandHandler, filters, ContextTypes
-from flask import Flask, request
+from flask import Flask, request as flask_request
 
 from agent import invoke_agent
 
@@ -12,49 +11,47 @@ load_dotenv()
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 assert TELEGRAM_BOT_TOKEN, "TELEGRAM_BOT_TOKEN is not set in the .env file"
 
+TELEGRAM_API_URL = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}"
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 flask_app = Flask(__name__)
 
-ptb_app = ApplicationBuilder().token(TELEGRAM_BOT_TOKEN).build()
 
-
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Handle the /start command."""
-    await update.message.reply_text(
-        "Hi! I'm your writing assistant.\n"
-        "I can check your spelling and spell words phonetically using the NATO alphabet.\n"
-        "Note: currently I only work in English."
+def send_message(chat_id: str, text: str):
+    """Send a message to a Telegram chat via the Telegram Bot API."""
+    requests.post(
+        f"{TELEGRAM_API_URL}/sendMessage",
+        json={"chat_id": chat_id, "text": text},
     )
-
-
-async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Handle incoming user messages, using chat_id as thread_id for memory."""
-    chat_id = str(update.message.chat_id)
-    user_message = update.message.text
-
-    logger.info(f"Message from chat_id {chat_id}: {user_message}")
-
-    response = invoke_agent(user_message, thread_id=chat_id)
-    await update.message.reply_text(response)
-
-
-ptb_app.add_handler(CommandHandler("start", start))
-ptb_app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
 
 @flask_app.route(f"/{TELEGRAM_BOT_TOKEN}", methods=["POST"])
 def webhook():
-    """Receive updates from Telegram and pass them to the bot."""
-    import asyncio
+    """Receive updates from Telegram and respond."""
+    data = flask_request.get_json(force=True)
 
-    async def process():
-        await ptb_app.initialize()
-        update = Update.de_json(request.get_json(force=True), ptb_app.bot)
-        await ptb_app.process_update(update)
+    message = data.get("message", {})
+    chat_id = str(message.get("chat", {}).get("id", ""))
+    text = message.get("text", "")
 
-    asyncio.run(process())
+    if not chat_id or not text:
+        return "ok"
+
+    if text == "/start":
+        send_message(
+            chat_id,
+            "Hi! I'm your writing assistant.\n"
+            "I can check your spelling and spell words phonetically "
+            "using the NATO alphabet.\n"
+            "Note: currently I only work in English."
+        )
+        return "ok"
+
+    logger.info(f"Message from chat_id {chat_id}: {text}")
+    response = invoke_agent(text, thread_id=chat_id)
+    send_message(chat_id, response)
     return "ok"
 
 
