@@ -1,0 +1,5 @@
+langchain-mistralai
+langgraph
+pyspellchecker
+python-telegram-bot
+python-dotenv
