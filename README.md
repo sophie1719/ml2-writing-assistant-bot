@@ -1,6 +1,7 @@
 # Writing Assistant Bot
 
 A Telegram bot that checks English spelling and spells words phonetically using the NATO alphabet, powered by Mistral AI and LangChain.
+Live bot: `@ml2_spellchecker_bot` on Telegram
 
 ## Course Units Applied
 
@@ -12,7 +13,8 @@ A Telegram bot that checks English spelling and spells words phonetically using 
 ## Architecture
 
 -> User sends a message on Telegram ->
--> bot.py receives it (polling) ->
+-> Telegram sends a POST request to the PythonAnywhere webhook URL ->
+-> Flask receives it in `bot.py` ->
 -> `invoke_agent()` is called with the message and the user's `chat_id` as `thread_id` ->
 -> LangGraph ReAct agent decides which tool(s) to use ->
 -> tool results are passed back to the model ->
@@ -29,7 +31,7 @@ Tools available to the agent:
 - Mistral AI (`mistral-large-latest`)
 - pyspellchecker
 - python-telegram-bot
-- PythonAnywhere (deployment)
+- PythonAnywhere (deployment, webhook with Flask)
 
 ## Installation & Configuration
 

@@ -48,8 +48,13 @@ ptb_app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_messa
 def webhook():
     """Receive updates from Telegram and pass them to the bot."""
     import asyncio
-    update = Update.de_json(request.get_json(force=True), ptb_app.bot)
-    asyncio.run(ptb_app.process_update(update))
+
+    async def process():
+        await ptb_app.initialize()
+        update = Update.de_json(request.get_json(force=True), ptb_app.bot)
+        await ptb_app.process_update(update)
+
+    asyncio.run(process())
     return "ok"
 
 
